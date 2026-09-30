@@ -50,6 +50,18 @@ body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f
 .proj-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .proj-card-count{font-size:12px;font-weight:500;color:#333;}
 .proj-card-date{font-size:11px;color:#aaa;}
+.picker-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.proj-filter{padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;color:#333;min-width:190px;}
+.proj-filter:focus{outline:2px solid #f07020;outline-offset:1px;}
+.proj-card{position:relative;}
+.proj-card-actions{position:absolute;top:10px;right:10px;display:flex;gap:4px;}
+.proj-act{background:#fff;border:1px solid #e0e0e0;border-radius:5px;font-size:11px;font-family:inherit;color:#666;padding:3px 8px;cursor:pointer;}
+.proj-act:hover{border-color:#f07020;color:#f07020;}
+.proj-act.del:hover{border-color:#c0392b;color:#c0392b;background:#fff5f5;}
+.proj-act:focus-visible{outline:2px solid #f07020;outline-offset:1px;}
+.picker-empty{grid-column:1/-1;font-size:13px;color:#888;padding:6px 0;}
+.del-warn{background:#fff5f5;border:1px solid #e8a0a0;border-radius:6px;padding:10px 12px;font-size:13px;color:#8a2a1f;line-height:1.5;}
+.del-summary{font-size:13px;line-height:1.7;margin-bottom:12px;}
 .new-proj-card{border:1px dashed #f0b080;border-radius:8px;padding:16px;cursor:pointer;background:#fff8f3;display:flex;align-items:center;gap:10px;color:#f07020;font-size:13px;font-weight:500;}
 .new-proj-card:hover{background:#fff0e8;border-color:#f07020;}
 .proj-loading{padding:40px;text-align:center;color:#888;font-size:13px;}
@@ -167,7 +179,7 @@ body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f
   @page{size:A4 portrait;margin:8mm 10mm 8mm 10mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
   body,html{margin:0;padding:0;background:#fff!important;}
-  body>.app,#modal-new-proj,#modal-issue,#modal-return,.toast{display:none!important;}
+  body>.app,#modal-new-proj,#modal-edit-proj,#modal-del-proj,#modal-issue,#modal-return,.toast{display:none!important;}
   .detail-modal-bg{display:none!important;}
   #print-sheet{display:block!important;width:100%;margin:0;padding:0;}
 }
@@ -239,7 +251,7 @@ body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f
     <div class="header-sub" id="header-sub">Task Record Database</div>
   </div>
   <div style="flex:1;"></div>
-  <div style="text-align:right;font-size:10px;opacity:.7;color:#fff;line-height:1.4;padding-right:10px;"><div>v1.2.5</div><div>28 Jul 2026</div></div>
+  <div style="text-align:right;font-size:10px;opacity:.7;color:#fff;line-height:1.4;padding-right:10px;"><div>v1.3.0</div><div>30 Sep 2026</div></div>
   <div class="header-right">
     <div class="sync-wrap" id="sync-wrap"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Synced</span></div>
     <button class="project-crumb" id="project-crumb" onclick="goHome()">&#8592; All projects</button>
@@ -263,7 +275,7 @@ body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f
 
   <!-- PROJECT PICKER -->
   <div id="screen-picker" style="display:none;">
-    <div class="picker-header"><h2>All projects</h2><button class="btn btn-primary" onclick="openNewProject()">+ New project</button></div>
+    <div class="picker-header"><h2>All projects</h2><div class="picker-tools"><select id="proj-filter" class="proj-filter" onchange="renderPicker()" aria-label="Filter by project number"><option value="">All projects</option></select><button class="btn btn-primary" onclick="openNewProject()">+ New project</button></div></div>
     <div class="proj-loading" id="picker-loading"><div class="spinner"></div>Loading projects…</div>
     <div class="picker-grid" id="picker-grid" style="display:none;"></div>
   </div>
@@ -527,7 +539,47 @@ body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('modal-new-proj')">Cancel</button>
-      <button class="btn btn-primary" onclick="createProject()">Create project</button>
+      <button class="btn btn-primary" id="np-create-btn" onclick="createProject()">Create project</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROJECT MODAL -->
+<div class="modal-bg" id="modal-edit-proj">
+  <div class="modal">
+    <div class="modal-head"><h3>Edit project</h3><button class="modal-close" onclick="closeModal('modal-edit-proj')">&times;</button></div>
+    <div class="modal-body">
+      <div class="fg" style="gap:11px;">
+        <div class="field full"><label>Project name</label><input id="ep-name" type="text" placeholder="0183-20 - Yard Cost - New Work"></div>
+        <div class="field full"><label>Description (optional)</label><input id="ep-desc" type="text"></div>
+      </div>
+      <div style="font-size:12px;color:#888;margin-top:10px;line-height:1.5;">Start the name with the 6-digit code (e.g. 0183-20) to use it in new task sheet numbers. Existing task sheets keep the name and number they were saved with.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-edit-proj')">Cancel</button>
+      <button class="btn btn-primary" id="ep-save-btn" onclick="saveProjectEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE PROJECT MODAL (two-step) -->
+<div class="modal-bg" id="modal-del-proj">
+  <div class="modal">
+    <div class="modal-head"><h3 id="dp-title">Delete project</h3><button class="modal-close" onclick="closeModal('modal-del-proj')">&times;</button></div>
+    <div class="modal-body">
+      <div id="dp-step1">
+        <div class="del-summary" id="dp-summary"></div>
+        <div class="del-warn">This removes the project and all of its task sheets from the database. The project file is moved to the Drive trash, where it can be restored for 30 days. Uploaded scans are not touched.</div>
+      </div>
+      <div id="dp-step2" style="display:none;">
+        <div class="del-warn" style="margin-bottom:12px;">Final check. Type <b>DELETE</b> to confirm.</div>
+        <div class="field full"><input id="dp-confirm" type="text" autocomplete="off" oninput="document.getElementById('dp-final-btn').disabled=this.value.trim()!=='DELETE'"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-del-proj')">Cancel</button>
+      <button class="btn btn-danger" id="dp-next-btn" onclick="deleteProjectStep2()">Continue to delete</button>
+      <button class="btn btn-danger" id="dp-final-btn" style="display:none;" disabled onclick="deleteProjectFinal()">Delete project</button>
     </div>
   </div>
 </div>
@@ -557,10 +609,10 @@ body{font-family:system-ui,sans-serif;font-size:14px;color:#1a1a1a;background:#f
 <div id="print-sheet"></div>
 
 <script>
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.3.0';
 const SHARED_FOLDER_ID  = '1MoCgykHoxvkCT-PNgoxxqtkAz6Q-ovTL';
 const SHARED_INDEX_ID   = '1G4hRf6LlYqDh_fpTgYKuK2OexpByRQ1z';
-const BUILD_DATE = '28 Jul 2026';
+const BUILD_DATE = '30 Sep 2026';
 
 const CLIENT_ID = '532958625397-kdr26ksrjc4vdditqolv65p41i91lftk.apps.googleusercontent.com';
 const SCOPES    = 'https://www.googleapis.com/auth/drive';
@@ -724,16 +776,100 @@ function renderPicker(){
   document.getElementById('header-sub').textContent='Task Record Database';
   document.getElementById('project-crumb').style.display='none';
   const grid=document.getElementById('picker-grid');
-  const cards=projects.map(p=>{
+  // Project number filter
+  const sel=document.getElementById('proj-filter');
+  const cur=sel.value;
+  const nums=[...new Set(projects.map(p=>projNumOf(p)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  sel.innerHTML='<option value="">All projects ('+projects.length+')</option>'+nums.map(n=>{ const c=projects.filter(p=>projNumOf(p)===n).length; return `<option value="${esc(n)}">${esc(n)} (${c})</option>`; }).join('');
+  sel.value=nums.includes(cur)?cur:'';
+  const shown=sel.value?projects.filter(p=>projNumOf(p)===sel.value):projects;
+  const cards=shown.map(p=>{
     const b=[]; if((p.openCount||0)>0) b.push(`<span class="badge badge-open">${p.openCount} open</span>`); if((p.provCount||0)>0) b.push(`<span class="badge badge-prov">${p.provCount} provisional</span>`); if((p.doneCount||0)>0) b.push(`<span class="badge badge-done">${p.doneCount} complete</span>`);
     return `<div class="proj-card" onclick='loadProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
+      <div class="proj-card-actions"><button class="proj-act" title="Edit project name" onclick="event.stopPropagation();openEditProject('${esc(p.id)}')">&#9998; Edit</button><button class="proj-act del" title="Delete project" onclick="event.stopPropagation();openDeleteProject('${esc(p.id)}')">Delete</button></div>
       <div class="proj-card-code">${esc(p.num||p.code||p.id)}</div>
       <div class="proj-card-name">${esc(p.name||'Unnamed')}</div>
       <div class="proj-card-meta"><span class="proj-card-count">${p.sheetCount||0} sheet${(p.sheetCount||0)!==1?'s':''}</span>${b.join('')}<span class="proj-card-date">${p.updatedAt?'Updated '+fmtDate(p.updatedAt.split('T')[0]):''}</span></div>
     </div>`;
   }).join('');
-  grid.innerHTML=cards+`<div class="new-proj-card" onclick="openNewProject()">&#43; New project</div>`;
+  const empty=sel.value&&!shown.length?'<div class="picker-empty">No projects with this number.</div>':'';
+  grid.innerHTML=empty+cards+`<div class="new-proj-card" onclick="openNewProject()">&#43; New project</div>`;
   show('screen-picker');
+}
+function projNumOf(p){ return String(p.num||p.code||'').replace(/^P/i,'').trim()||'(none)'; }
+
+/* ── Project edit / delete ── */
+// Re-read the index from Drive before changing it, so counts or projects saved by others are not overwritten
+async function freshIndex(){
+  const res=await driveGet(indexFileId);
+  const data=typeof res.result==='string'?JSON.parse(res.result):res.result;
+  projects=Array.isArray(data.projects)?data.projects:[];
+}
+let editProjId=null, delProjId=null;
+function openEditProject(id){
+  const p=projects.find(x=>x.id===id); if(!p) return;
+  editProjId=id;
+  document.getElementById('ep-name').value=p.name||'';
+  document.getElementById('ep-desc').value=p.desc||'';
+  openModal('modal-edit-proj'); document.getElementById('ep-name').focus();
+}
+async function saveProjectEdit(){
+  const name=document.getElementById('ep-name').value.trim(), desc=document.getElementById('ep-desc').value.trim();
+  if(!name){ toast('Enter a project name'); return; }
+  const btn=document.getElementById('ep-save-btn'); if(btn.disabled) return; btn.disabled=true;
+  setSyncing('syncing');
+  try{
+    await ensureAuth(); await freshIndex();
+    const idx=projects.findIndex(x=>x.id===editProjId);
+    if(idx<0) throw new Error('Project no longer exists');
+    projects[idx].name=name; projects[idx].desc=desc; projects[idx].updatedAt=new Date().toISOString();
+    await saveIndex(); setSyncing('synced'); closeModal('modal-edit-proj'); renderPicker(); toast('Project updated');
+  }catch(e){ setSyncing('error'); toast('Update failed: '+e.message); }
+  finally{ btn.disabled=false; }
+}
+function openDeleteProject(id){
+  const p=projects.find(x=>x.id===id); if(!p) return;
+  delProjId=id;
+  document.getElementById('dp-title').textContent='Delete project';
+  document.getElementById('dp-summary').innerHTML=`<b>${esc(p.num||p.code||'')}</b> ${esc(p.name||'Unnamed')}<br>${p.sheetCount||0} task sheet${(p.sheetCount||0)!==1?'s':''}`;
+  document.getElementById('dp-step1').style.display='';
+  document.getElementById('dp-step2').style.display='none';
+  document.getElementById('dp-next-btn').style.display='';
+  const fb=document.getElementById('dp-final-btn'); fb.style.display='none'; fb.disabled=true;
+  document.getElementById('dp-confirm').value='';
+  openModal('modal-del-proj');
+}
+function deleteProjectStep2(){
+  document.getElementById('dp-title').textContent='Confirm delete';
+  document.getElementById('dp-step1').style.display='none';
+  document.getElementById('dp-step2').style.display='';
+  document.getElementById('dp-next-btn').style.display='none';
+  document.getElementById('dp-final-btn').style.display='';
+  document.getElementById('dp-confirm').focus();
+}
+async function deleteProjectFinal(){
+  if(document.getElementById('dp-confirm').value.trim()!=='DELETE') return;
+  const fb=document.getElementById('dp-final-btn'); fb.disabled=true;
+  setSyncing('syncing');
+  let fileId=null;
+  try{
+    await ensureAuth(); await freshIndex();
+    const idx=projects.findIndex(x=>x.id===delProjId);
+    if(idx<0) throw new Error('Project no longer exists');
+    fileId=projects[idx].fileId;
+    projects.splice(idx,1);
+    await saveIndex();
+  }catch(e){ setSyncing('error'); toast('Delete failed: '+e.message); fb.disabled=false; return; }
+  // Index updated; now move the project file to Drive trash (recoverable)
+  let trashed=false;
+  if(fileId){
+    try{
+      const r=await gapi.client.request({path:`https://www.googleapis.com/drive/v3/files/${fileId}`,method:'PATCH',params:{supportsAllDrives:true,fields:'id,trashed'},headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})});
+      trashed=!!(r.result&&r.result.trashed);
+    }catch(e){ trashed=false; }
+  }
+  setSyncing('synced'); closeModal('modal-del-proj'); renderPicker();
+  toast(trashed?'Project deleted':'Project removed. File left in Drive (no permission to trash it)');
 }
 
 async function openNewProject(){ openModal('modal-new-proj'); document.getElementById('np-num').focus(); }
@@ -742,12 +878,14 @@ async function createProject(){
   if(!num||!/^\d{4}$/.test(num)){toast('Enter a 4-digit project number');return;}
   if(!name){toast('Enter a project name');return;}
   const code=num;
+  const cbtn=document.getElementById('np-create-btn'); if(cbtn.disabled) return; cbtn.disabled=true;
   setSyncing('syncing');
   const id='proj_'+Date.now(), filename=`FM_Project_${num}_${name.replace(/[^a-zA-Z0-9]/g,'_')}_${Date.now()}.json`;
   const fileId=await driveCreate(filename,{records:[],projectId:id,createdAt:new Date().toISOString(),createdBy:currentUser.email||'unknown'},folderId);
   const proj={id,code,num,name,desc,fileId,filename,sheetCount:0,openCount:0,provCount:0,doneCount:0,createdAt:new Date().toISOString(),createdBy:currentUser.name||currentUser.email||'unknown',updatedAt:new Date().toISOString()};
   projects.push(proj); await saveIndex(); setSyncing('synced'); closeModal('modal-new-proj');
   ['np-num','np-name','np-desc'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; });
+  cbtn.disabled=false;
   toast('Project created'); loadProject(proj);
 }
 
@@ -765,7 +903,7 @@ async function loadProject(proj,showSpinner){
     records=Array.isArray(data.records)?data.records:[];
     setSyncing('synced'); renderRecords();
     document.getElementById('f-projno').value=currentProject.num||'';
-    document.getElementById('f-projname').value=currentProject.code||'';
+    document.getElementById('f-projname').value=currentProject.name||'';
     setAutoDocNum();
   }catch(e){ setSyncing('error'); if(e.status===401){sessionStorage.removeItem('fm_tok');signIn();} else toast('Error: '+e.message); }
   finally{ document.getElementById('rec-loading').style.display='none'; }
@@ -781,14 +919,35 @@ async function saveProjectFile(){
 function goHome(){ records=[]; currentProject=null; renderPicker(); loadIndex(); }
 
 /* ── Auto document number ── */
+// Prefix = first 6 digits of the project code, e.g. name "0183-20 - Yard Cost - New Work" gives 0183-20.
+// Falls back to the 4-digit project number if no 6-digit code is found.
+function projectPrefix(p){
+  p=p||currentProject; if(!p) return '';
+  for(const src of [p.name,p.num,p.code]){
+    const m=String(src||'').match(/^\s*P?(\d{4})\s*-\s*(\d{2})(?!\d)/i);
+    if(m) return m[1]+'-'+m[2];
+  }
+  return String(p.num||p.code||'0000').replace(/^P/i,'').replace(/\s+/g,'');
+}
+// Sequence number of an existing doc number. Reads the new format (0183-20-004) and
+// the old TS formats (0183-TS-003, 0183-20-TS-002) so numbering carries on without gaps or repeats.
+function docSeq(docNum,prefix){
+  if(!docNum) return 0;
+  const pe=prefix.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  let m=String(docNum).trim().match(new RegExp('^'+pe+'-(\\d+)$'));
+  if(m) return parseInt(m[1],10);
+  m=String(docNum).trim().match(/-TS-(\d+)$/i);
+  return m?parseInt(m[1],10):0;
+}
+function nextDocNum(excludeId){
+  const prefix=projectPrefix();
+  const nums=records.filter(r=>!excludeId||r.id!==excludeId).map(r=>docSeq(r.docNum,prefix));
+  const next=Math.max(0,...nums)+1;
+  return prefix+'-'+String(next).padStart(3,'0');
+}
 function generateDocNum(){
   if(!currentProject) return '';
-  const projRef=(currentProject.num||'0000').replace(/^P/i,'').replace(/\s+/g,'');
-  const existingNums=records
-    .filter(r=>!editingId||r.id!==editingId)
-    .map(r=>{ const m=r.docNum&&r.docNum.match(/(?:^|-)TS-(\d+)/); return m?parseInt(m[1],10):0; });
-  const nextNum=existingNums.length?Math.max(...existingNums)+1:1;
-  return projRef+'-TS-'+String(nextNum).padStart(3,'0');
+  return nextDocNum(editingId);
 }
 function setAutoDocNum(){
   if(editingId) return;
@@ -1262,12 +1421,9 @@ async function duplicateSheet(id){
   copy.createdBy=currentUser.email||'unknown';
   copy.createdByName=currentUser.name||currentUser.email||'Unknown';
   copy.updatedAt=null; copy.updatedBy=null;
-  // Auto-generate new doc number based on new position
+  // Auto-generate new doc number
+  copy.docNum=nextDocNum();
   records.unshift(copy);
-  const projRef=(currentProject.num||'0000').replace(/^P/i,'').replace(/\s+/g,'');
-  const existingNums=records.map(rec=>{ const m=rec.docNum&&rec.docNum.match(/(?:^|-)TS-(\d+)/); return m?parseInt(m[1],10):0; });
-  const nextNum=Math.max(...existingNums.filter((_,i)=>i>0))+1;
-  copy.docNum=projRef+'-TS-'+String(nextNum).padStart(3,'0');
   setSyncing('syncing');
   try{
     await saveProjectFile();
